@@ -1,0 +1,19 @@
+name: Simpleback
+version: '${project.version}'
+main: cn.kurt6.back.Simpleback
+api-version: '1.19'
+author: Kurt
+folia-supported: true
+commands:
+  back:
+    description: 返回上一个位置
+  simpleback:
+    description: 管理插件
+    usage: /simpleback reload
+permissions:
+  simpleback.use:
+    description: 允许使用/back命令
+    default: true
+  simpleback.admin:
+    description: 使用/simpleback reload重载配置的权限
+    default: op
