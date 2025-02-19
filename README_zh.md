@@ -24,7 +24,10 @@
 
 ```
 # zh/en
-language: zh
+language: en
+
+# 最大记录数量
+max-records: 2
 
 # 需要监听的传送类命令
 tracked-commands:
@@ -32,7 +35,6 @@ tracked-commands:
   - /res tp
   - /home
   - /warp
-  - /back
 ```
 
 ----------------------------------------------------------------------------------------------------------
