@@ -1,4 +1,8 @@
-# 需要监听的传送类命令（支持带命名空间的命令）
+# zh/en
+language: zh
+
+# 需要监听的传送类命令
+# Transmission commands that need to be monitored.
 tracked-commands:
   - /tp
   - /res tp
