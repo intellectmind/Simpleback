@@ -8,3 +8,4 @@ tracked-commands:
   - /res tp
   - /home
   - /warp
+  - /back
