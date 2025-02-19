@@ -1,129 +1,160 @@
 package cn.kurt6.back;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.FileConfiguration;
+import cn.kurt6.back.bStats.Metrics;
+import org.bukkit.*;
+import org.bukkit.command.*;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.*;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Deque;
-import java.util.UUID;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.LinkedBlockingDeque;
 
 public class Simpleback extends JavaPlugin implements Listener {
 
-    private final ConcurrentHashMap<UUID, Deque<Location>> locationHistory = new ConcurrentHashMap<>();
-    private FileConfiguration config;
+    private final Map<UUID, Location> lastLocations = new ConcurrentHashMap<>();
+    private List<String> trackedCommands = new ArrayList<>();
+    private File dataFile;
 
     @Override
     public void onEnable() {
-        saveDefaultConfig();
-        reloadConfigValues();
-        Bukkit.getPluginManager().registerEvents(this, this);
-    }
+        // bStats
+        int pluginId = 24847;
+        Metrics metrics = new Metrics(this, pluginId);
 
-    // 重载配置
-    public void reloadConfigValues() {
-        reloadConfig();
-        config = getConfig();
-        config.options().copyDefaults(true);
-        saveConfig();
-    }
-
-    @EventHandler
-    public void onPlayerTeleport(PlayerTeleportEvent event) {
-        if (!config.getBoolean("enabled", true)) return;
-
-        Player player = event.getPlayer();
-        Location from = event.getFrom();
-
-        if (event.getCause() == PlayerTeleportEvent.TeleportCause.SPECTATE) return;
-
-        // 获取或初始化位置队列
-        Deque<Location> history = locationHistory.computeIfAbsent(
-                player.getUniqueId(),
-                k -> new LinkedBlockingDeque<>(config.getInt("max-back-entries", 3))
-        );
-
-        // 移除最旧的位置（当队列满时）
-        if (history.size() >= config.getInt("max-back-entries", 3)) {
-            history.removeFirst();
+        // 创建插件目录
+        if (!getDataFolder().exists() && !getDataFolder().mkdirs()) {
+            getLogger().severe("无法创建插件目录");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
         }
-        history.addLast(from.clone());
+
+        // 初始化配置文件
+        initConfig();
+
+        // 加载存储数据
+        loadLocations();
+
+        // 注册事件
+        getServer().getPluginManager().registerEvents(this, this);
+
+        // 注册命令
+        Objects.requireNonNull(getCommand("back")).setExecutor(this);
+    }
+
+    private void initConfig() {
+        // 创建/加载配置文件
+        saveDefaultConfig();
+        trackedCommands = getConfig().getStringList("tracked-commands");
+        getLogger().info("已加载监听命令: " + trackedCommands);
+
+        // 初始化数据文件
+        dataFile = new File(getDataFolder(), "locations.yml");
+        if (!dataFile.exists()) {
+            try {
+                dataFile.createNewFile();
+            } catch (IOException e) {
+                getLogger().severe("无法创建数据文件: " + e.getMessage());
+            }
+        }
+    }
+
+    private void loadLocations() {
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(dataFile);
+        for (String key : yaml.getKeys(false)) {
+            try {
+                UUID uuid = UUID.fromString(key);
+                World world = Bukkit.getWorld(yaml.getString(key + ".world"));
+                if (world == null) continue;
+
+                Location loc = new Location(
+                        world,
+                        yaml.getDouble(key + ".x"),
+                        yaml.getDouble(key + ".y"),
+                        yaml.getDouble(key + ".z")
+                );
+                lastLocations.put(uuid, loc);
+            } catch (IllegalArgumentException e) {
+                getLogger().warning("无效的UUID格式: " + key);
+            }
+        }
+        getLogger().info("已加载 " + lastLocations.size() + " 个位置记录");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onCommand(PlayerCommandPreprocessEvent event) {
+        String[] parts = event.getMessage().toLowerCase().split(" ");
+        if (parts.length == 0) return;
+
+        String baseCommand = parts[0];
+        if (trackedCommands.contains(baseCommand)) {
+            Player player = event.getPlayer();
+            Location loc = player.getLocation();
+
+            lastLocations.put(player.getUniqueId(), loc);
+            getLogger().info("记录位置: " + player.getName() + " -> " + formatLocation(loc));
+        }
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-        if (cmd.getName().equalsIgnoreCase("back")) {
-            handleBackCommand(sender);
-            return true;
-        } else if (cmd.getName().equalsIgnoreCase("simpleback") && args.length > 0 && args[0].equalsIgnoreCase("reload")) {
-            handleReloadCommand(sender);
-            return true;
-        }
-        return false;
-    }
-
-    private void handleBackCommand(CommandSender sender) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage("只有玩家可以使用此命令！");
-            return;
+            sender.sendMessage("§c仅玩家可使用此命令");
+            return true;
         }
 
         Player player = (Player) sender;
+        Location loc = lastLocations.get(player.getUniqueId());
 
-        // 检查功能是否启用
-        if (!config.getBoolean("enabled", true)) {
-            sendMessage(player, "messages.disabled");
-            return;
+        if (loc == null || loc.getWorld() == null) {
+            player.sendMessage("§c没有可用的传送记录");
+            return true;
         }
 
-        // 检查权限
-        if (!player.hasPermission("simpleback.use")) {
-            sendMessage(player, "messages.no-permission");
-            return;
-        }
-
-        player.getScheduler().run(this, task -> {
-            Deque<Location> history = locationHistory.get(player.getUniqueId());
-            if (history == null || history.isEmpty()) {
-                sendMessage(player, "messages.no-location");
-                return;
+        player.teleportAsync(loc).thenAccept(success -> {
+            if (success) {
+                player.sendMessage("§a已传送至最后记录位置");
+                getLogger().info(player.getName() + " 传送至 " + formatLocation(loc));
+            } else {
+                player.sendMessage("§c传送失败：目标位置不安全");
             }
-
-            Location target = history.pollLast();
-            Location current = player.getLocation();
-
-            player.teleportAsync(target).thenAccept(success -> {
-                if (success) {
-                    // 将当前位置存入历史以便连续回退
-                    history.addLast(current);
-                    sendMessage(player, "messages.success");
-                }
-            });
-        }, null);
+        });
+        return true;
     }
 
-    private void handleReloadCommand(CommandSender sender) {
-        if (!sender.hasPermission("simpleback.admin")) {
-            sendMessage(sender, "messages.no-permission");
-            return;
-        }
-
-        reloadConfigValues();
-        sendMessage(sender, "messages.reloaded");
+    @Override
+    public void onDisable() {
+        saveLocations();
     }
 
-    private void sendMessage(CommandSender sender, String configPath) {
-        String message = config.getString(configPath, "");
-        if (!message.isEmpty()) {
-            sender.sendMessage(message.replace('&', '§'));
+    private void saveLocations() {
+        YamlConfiguration yaml = new YamlConfiguration();
+        lastLocations.forEach((uuid, loc) -> {
+            String path = uuid.toString();
+            yaml.set(path + ".world", loc.getWorld().getName());
+            yaml.set(path + ".x", loc.getX());
+            yaml.set(path + ".y", loc.getY());
+            yaml.set(path + ".z", loc.getZ());
+        });
+
+        try {
+            yaml.save(dataFile);
+            getLogger().info("成功保存 " + lastLocations.size() + " 个位置记录");
+        } catch (IOException e) {
+            getLogger().severe("保存位置数据失败: " + e.getMessage());
         }
+    }
+
+    private String formatLocation(Location loc) {
+        return String.format("%s [%d, %d, %d]",
+                loc.getWorld().getName(),
+                loc.getBlockX(),
+                loc.getBlockY(),
+                loc.getBlockZ()
+        );
     }
 }

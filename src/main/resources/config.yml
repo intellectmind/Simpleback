@@ -1,13 +1,6 @@
-# 是否启用 /back 命令
-enabled: true
-
-# 最大记录的上个位置数量（设置为 1 时只记录最后一次传送）
-max-back-entries: 3
-
-# 自定义消息
-messages:
-  disabled: "&c回传功能已关闭！"
-  no-permission: "&c你没有权限使用此命令！"
-  no-location: "&c没有可返回的位置！"
-  success: "&a已回到上一个位置！"
-  reloaded: "&a配置已重新加载！"
+# 需要监听的传送类命令（支持带命名空间的命令）
+tracked-commands:
+  - /tp
+  - /res tp
+  - /home
+  - /warp
