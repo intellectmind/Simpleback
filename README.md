@@ -1,4 +1,4 @@
-# ![logo](https://github.com/intellectmind/ChunkEntityLimiter/blob/main/icon_40.png) Simpleback
+# ![logo](https://github.com/intellectmind/Simpleback/blob/main/icon_40.png) Simpleback
 
 **其他语言版本: [English](README.md)，[中文](README_zh.md)。**
 
