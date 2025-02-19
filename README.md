@@ -41,4 +41,4 @@ tracked-commands:
 ![bStats](https://bstats.org/signatures/bukkit/Simpleback.svg)
 
 ### Star History
-[![Star History Chart](https://api.star-history.com/svg?repos=intellectmind/ChunkEntityLimiter&type=Date)](https://star-history.com/#intellectmind/ChunkEntityLimiter&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=Simpleback/Simpleback&type=Date)](https://star-history.com/#Simpleback/Simpleback&Date)
