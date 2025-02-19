@@ -24,7 +24,7 @@
 
 ```
 # zh/en
-language: en
+language: zh
 
 # 最大记录数量
 max-records: 2
