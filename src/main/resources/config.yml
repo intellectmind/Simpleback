@@ -1,6 +1,10 @@
 # zh/en
 language: zh
 
+# 最大记录数量#
+# Maximum number of records
+max-records: 2
+
 # 需要监听的传送类命令
 # Transmission commands that need to be monitored.
 tracked-commands:
@@ -8,4 +12,3 @@ tracked-commands:
   - /res tp
   - /home
   - /warp
-  - /back

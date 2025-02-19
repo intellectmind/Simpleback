@@ -17,7 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Simpleback extends JavaPlugin implements Listener {
 
-    private final Map<UUID, Location> lastLocations = new ConcurrentHashMap<>();
+    private final Map<UUID, Deque<Location>> lastLocations = new ConcurrentHashMap<>();
+    private int maxRecords;
     private List<String> trackedCommands = new ArrayList<>();
     private File dataFile;
 
@@ -36,6 +37,7 @@ public class Simpleback extends JavaPlugin implements Listener {
         zhMessages.put("command.teleport_fail", "§c传送失败：目标位置不安全");
         zhMessages.put("logger.locations_loaded", "已加载 {0} 个位置记录");
         zhMessages.put("logger.locations_saved", "成功保存 {0} 个位置记录");
+        zhMessages.put("logger.location_teleported", "玩家 {0} 传送到位置 {1}");
 
         // 英文消息
         Map<String, String> enMessages = new HashMap<>();
@@ -46,6 +48,7 @@ public class Simpleback extends JavaPlugin implements Listener {
         enMessages.put("command.teleport_fail", "§cTeleport failed: destination is unsafe");
         enMessages.put("logger.locations_loaded", "Loaded {0} location records");
         enMessages.put("logger.locations_saved", "Successfully saved {0} location records");
+        enMessages.put("logger.location_teleported", "Player {0} teleported to {1}");
 
         messages.put("zh", zhMessages);
         messages.put("en", enMessages);
@@ -90,6 +93,7 @@ public class Simpleback extends JavaPlugin implements Listener {
         getConfig().options().copyDefaults(true); // 确保默认值被写入
         trackedCommands = getConfig().getStringList("tracked-commands");
         language = getConfig().getString("language", "zh").toLowerCase();
+        maxRecords = getConfig().getInt("max-records", 2);
         getLogger().info("当前语言: " + language);
         getLogger().info("已加载监听命令: " + trackedCommands);
 
@@ -109,21 +113,53 @@ public class Simpleback extends JavaPlugin implements Listener {
         for (String key : yaml.getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(key);
-                World world = Bukkit.getWorld(yaml.getString(key + ".world"));
-                if (world == null) continue;
-
-                Location loc = new Location(
-                        world,
-                        yaml.getDouble(key + ".x"),
-                        yaml.getDouble(key + ".y"),
-                        yaml.getDouble(key + ".z")
-                );
-                lastLocations.put(uuid, loc);
+                Deque<Location> queue = new ArrayDeque<>();
+                // 检查新旧数据格式
+                if (yaml.contains(key + ".0")) {
+                    int index = 0;
+                    while (yaml.contains(key + "." + index)) {
+                        // 加载每个位置
+                        World world = Bukkit.getWorld(yaml.getString(key + "." + index + ".world"));
+                        if (world == null) {
+                            index++;
+                            continue;
+                        }
+                        Location loc = new Location(
+                                world,
+                                yaml.getDouble(key + "." + index + ".x"),
+                                yaml.getDouble(key + "." + index + ".y"),
+                                yaml.getDouble(key + "." + index + ".z")
+                        );
+                        queue.add(loc);
+                        index++;
+                    }
+                } else {
+                    // 旧格式处理
+                    World world = Bukkit.getWorld(yaml.getString(key + ".world"));
+                    if (world != null) {
+                        Location loc = new Location(
+                                world,
+                                yaml.getDouble(key + ".x"),
+                                yaml.getDouble(key + ".y"),
+                                yaml.getDouble(key + ".z")
+                        );
+                        queue.add(loc);
+                    }
+                }
+                // 截断到最大记录数
+                while (queue.size() > maxRecords) {
+                    queue.pollLast();
+                }
+                if (!queue.isEmpty()) {
+                    lastLocations.put(uuid, queue);
+                }
             } catch (IllegalArgumentException e) {
                 getLogger().warning("无效的UUID格式: " + key);
             }
         }
-        getLogger().info(getMessage("logger.locations_loaded", lastLocations.size()));
+        // 更新日志信息
+        int total = lastLocations.values().stream().mapToInt(Deque::size).sum();
+        getLogger().info(getMessage("logger.locations_loaded", total));
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -136,7 +172,12 @@ public class Simpleback extends JavaPlugin implements Listener {
             Player player = event.getPlayer();
             Location loc = player.getLocation();
 
-            lastLocations.put(player.getUniqueId(), loc);
+            Deque<Location> queue = lastLocations.computeIfAbsent(player.getUniqueId(), k -> new ArrayDeque<>());
+            queue.offerFirst(loc);
+            // 保持队列不超过最大记录数
+            while (queue.size() > maxRecords) {
+                queue.pollLast();
+            }
         }
     }
 
@@ -153,16 +194,16 @@ public class Simpleback extends JavaPlugin implements Listener {
             return true;
         }
 
-        Location loc = lastLocations.get(player.getUniqueId());
-        if (loc == null || loc.getWorld() == null) {
+        Deque<Location> queue = lastLocations.get(player.getUniqueId());
+        if (queue == null || queue.isEmpty()) {
             player.sendMessage(getMessage("command.no_location"));
             return true;
         }
-
+        Location loc = queue.pollFirst(); // 取出并移除最新位置
         player.teleportAsync(loc).thenAccept(success -> {
             if (success) {
                 player.sendMessage(getMessage("command.teleport_success"));
-                getLogger().info(getMessage("logger.location_recorded", player.getName(), formatLocation(loc)));
+                getLogger().info(getMessage("logger.location_teleported", player.getName(), formatLocation(loc)));
             } else {
                 player.sendMessage(getMessage("command.teleport_fail"));
             }
@@ -177,12 +218,17 @@ public class Simpleback extends JavaPlugin implements Listener {
 
     private void saveLocations() {
         YamlConfiguration yaml = new YamlConfiguration();
-        lastLocations.forEach((uuid, loc) -> {
-            String path = uuid.toString();
-            yaml.set(path + ".world", loc.getWorld().getName());
-            yaml.set(path + ".x", loc.getX());
-            yaml.set(path + ".y", loc.getY());
-            yaml.set(path + ".z", loc.getZ());
+        lastLocations.forEach((uuid, queue) -> {
+            String uuidStr = uuid.toString();
+            int index = 0;
+            for (Location loc : queue) {
+                String path = uuidStr + "." + index;
+                yaml.set(path + ".world", loc.getWorld().getName());
+                yaml.set(path + ".x", loc.getX());
+                yaml.set(path + ".y", loc.getY());
+                yaml.set(path + ".z", loc.getZ());
+                index++;
+            }
         });
 
         try {

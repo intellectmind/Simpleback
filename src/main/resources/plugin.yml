@@ -1,7 +1,7 @@
 name: Simpleback
 version: '1.0'
 main: cn.kurt6.back.Simpleback
-api-version: 1.19
+api-version: 1.16
 author: Kurt
 folia-supported: true
 commands:
