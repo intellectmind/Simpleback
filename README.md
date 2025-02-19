@@ -1,38 +1,40 @@
 # ![logo](https://github.com/intellectmind/Simpleback/blob/main/icon_40.png) Simpleback
 
-**其他语言版本: [English](README.md)，[中文](README_zh.md)。**
+**Read this in other languages: [English](README.md)，[中文](README_zh.md)。**
 
 ----------------------------------------------------------------------------------------------------------
 
-#### 支持Folia的back插件，同时支持Paper, Bukkit, Purpur, Spigot
+#### Supports Folia's back plugin and also supports Paper, Bukkit, Purpur, Spigot.
 
-#### 使用/tp等指令后，输入/back可返回到上一个坐标
+#### After using commands such as/tp, enter/back to return to the previous coordinate.
 
-#### 可在plugins文件夹下的Simpleback文件夹内修改默认配置
+#### You can modify the default configuration in the Simpleback folder under the plugins folder.
 
 ----------------------------------------------------------------------------------------------------------
 
-#### 命令：
+#### Command：
 
-| 命令                     | 描述                                         | 权限                             |
+| Command               | Description                                     | Permission                         |
 |--------------------------|--------------------------------------------|----------------------------------|
-| ```/back```       | 返回上一个坐标                               | simpleback.back 默认全部       |
+| ```/back```       | Return to the previous coordinate             | simpleback.back (defaults to all)       |
 
 ----------------------------------------------------------------------------------------------------------
 
-#### 配置文件（config.yml）
+#### config.yml
 
 ```
 # zh/en
 language: zh
 
-# 需要监听的传送类命令
+# Maximum number of records
+max-records: 2
+
+# Transmission commands that need to be monitored.
 tracked-commands:
   - /tp
   - /res tp
   - /home
   - /warp
-  - /back
 ```
 
 ----------------------------------------------------------------------------------------------------------
