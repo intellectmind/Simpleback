@@ -32,9 +32,8 @@ max-records: 2
 # 需要监听的传送类命令
 tracked-commands:
   - /tp
-  - /res tp
-  - /home
-  - /warp
+  - /cmi:home # 注意游戏内也要使用‘/cmi:home’ 而不是‘/home’。如果需要/home，需要再tracked-commands直接添加‘/cmi’，因为你输入‘/home’但服务端收到的是‘/cmi home’
+  - /cmi:warp
 ```
 
 ----------------------------------------------------------------------------------------------------------
