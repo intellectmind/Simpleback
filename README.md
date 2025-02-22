@@ -32,9 +32,8 @@ max-records: 2
 # Transmission commands that need to be monitored.
 tracked-commands:
   - /tp
-  - /res tp
-  - /home
-  - /warp
+  - /cmi:home # In the game, ensure to use /cmi:home rather than /home. If /home is required, you must add /cmi directly in the tracked-commands settings. This is due to the fact that when you type /home, the server interprets it as /cmi home.
+  - /cmi:warp
 ```
 
 ----------------------------------------------------------------------------------------------------------
