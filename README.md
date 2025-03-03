@@ -24,10 +24,10 @@
 
 ```
 # zh/en
-language: zh
+language: en
 
 # Maximum number of records
-max-records: 2
+max-records: 1
 
 # Transmission commands that need to be monitored.
 tracked-commands:
