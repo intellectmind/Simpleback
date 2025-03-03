@@ -94,8 +94,8 @@ public class Simpleback extends JavaPlugin implements Listener {
         trackedCommands = getConfig().getStringList("tracked-commands");
         language = getConfig().getString("language", "zh").toLowerCase();
         maxRecords = getConfig().getInt("max-records", 2);
-        getLogger().info("当前语言: " + language);
-        getLogger().info("已加载监听命令: " + trackedCommands);
+        getLogger().info("language: " + language);
+        getLogger().info("trackedCommands: " + trackedCommands);
 
         // 初始化数据文件
         dataFile = new File(getDataFolder(), "locations.yml");

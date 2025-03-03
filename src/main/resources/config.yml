@@ -1,14 +1,15 @@
 # zh/en
-language: zh
+language: en
 
 # 最大记录数量
 # Maximum number of records
-max-records: 2
+max-records: 1
 
 # 需要监听的传送类命令
 # Transmission commands that need to be monitored.
 tracked-commands:
   - /tp
-  - /res tp
-  - /home
-  - /warp
+  # 注意游戏内也要使用‘/cmi:home’ 而不是‘/home’。如果需要/home，需要再tracked-commands直接添加‘/cmi’，因为你输入‘/home’但服务端收到的是‘/cmi home’
+  # In the game, ensure to use /cmi:home rather than /home. If /home is required, you must add /cmi directly in the tracked-commands settings. This is due to the fact that when you type /home, the server interprets it as /cmi home.
+  - /cmi:home
+  - /cmi:warp
