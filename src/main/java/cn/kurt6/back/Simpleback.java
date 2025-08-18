@@ -192,7 +192,6 @@ public class Simpleback extends JavaPlugin implements Listener {
         }
     }
 
-    // 修改后的onCommand方法部分
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) {
@@ -215,8 +214,8 @@ public class Simpleback extends JavaPlugin implements Listener {
         Location currentLoc = player.getLocation();
         Location targetLoc = queue.peekFirst(); // 查看但不移除最新位置
 
-        if (toggleBackMode && targetLoc != null && currentLoc.distanceSquared(targetLoc) < 4) {
-            // 如果启用了来回模式且玩家已经在目标位置附近，则取下一个位置
+        if (toggleBackMode && targetLoc != null) {
+            // 移除距离检查，直接切换位置
             queue.pollFirst(); // 移除当前位置
             targetLoc = queue.peekFirst(); // 查看下一个位置
             if (targetLoc == null) {
@@ -225,29 +224,33 @@ public class Simpleback extends JavaPlugin implements Listener {
             }
         }
 
-        final Location finalTargetLoc = queue.pollFirst(); // 声明为final变量
+        final Location finalTargetLoc = queue.pollFirst();
+        if (finalTargetLoc.getWorld() == null || Bukkit.getWorld(finalTargetLoc.getWorld().getName()) == null) {
+            player.sendMessage(getMessage("command.teleport_fail", "目标世界未加载或不存在"));
+            return true;
+        }
+
         if (toggleBackMode) {
             // 如果启用了来回模式，将当前位置添加到队列末尾
             queue.offerLast(currentLoc);
-            // 保持队列不超过最大记录数
             while (queue.size() > maxRecords) {
                 queue.pollLast();
             }
         }
 
+        // 安全传送
         player.teleportAsync(finalTargetLoc).thenAccept(success -> {
             if (success) {
                 player.sendMessage(getMessage("command.teleport_success"));
                 getLogger().info(getMessage("logger.location_teleported",
                         player.getName(),
-                        formatLocation(finalTargetLoc))); // 使用final变量
+                        formatLocation(finalTargetLoc)));
             } else {
                 player.sendMessage(getMessage("command.teleport_fail"));
             }
         });
         return true;
     }
-
 
     @Override
     public void onDisable() {
