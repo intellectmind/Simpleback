@@ -29,11 +29,19 @@ language: zh
 # 最大记录数量
 max-records: 2
 
+# 设置为true开启调试模式，控制台会输出监听到的命令
+debug-mode: false
+
+# 是否启用来回back模式，启用后玩家可以在两个位置之间来回传送
+toggle-back-mode: true
+
 # 需要监听的传送类命令
 tracked-commands:
-  - /tp
-  - /cmi:home # 注意游戏内也要使用‘/cmi:home’ 而不是‘/home’。如果需要/home，需要再tracked-commands直接添加‘/cmi’，因为你输入‘/home’但服务端收到的是‘/cmi home’
-  - /cmi:warp
+  - "cmi home"
+  - "cmi warp"
+  - "res tp" # 匹配/res tp开头的所有命令
+  - "teleport"
+  - "tp"
 ```
 
 ----------------------------------------------------------------------------------------------------------
