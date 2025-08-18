@@ -21,6 +21,8 @@ public class Simpleback extends JavaPlugin implements Listener {
     private int maxRecords;
     private List<String> trackedCommands = new ArrayList<>();
     private File dataFile;
+    private boolean debugMode;
+    private boolean toggleBackMode;
 
     private String language; // 当前语言
 
@@ -38,6 +40,8 @@ public class Simpleback extends JavaPlugin implements Listener {
         zhMessages.put("logger.locations_loaded", "已加载 {0} 个位置记录");
         zhMessages.put("logger.locations_saved", "成功保存 {0} 个位置记录");
         zhMessages.put("logger.location_teleported", "玩家 {0} 传送到位置 {1}");
+        zhMessages.put("logger.debug.command_tracked", "[调试] 监听到玩家 {0} 输入的命令: {1}");
+        zhMessages.put("config.toggle_back_mode", "来回back模式: {0}");
 
         // 英文消息
         Map<String, String> enMessages = new HashMap<>();
@@ -49,6 +53,8 @@ public class Simpleback extends JavaPlugin implements Listener {
         enMessages.put("logger.locations_loaded", "Loaded {0} location records");
         enMessages.put("logger.locations_saved", "Successfully saved {0} location records");
         enMessages.put("logger.location_teleported", "Player {0} teleported to {1}");
+        enMessages.put("logger.debug.command_tracked", "[DEBUG] Tracked command from player {0}: {1}");
+        enMessages.put("config.toggle_back_mode", "Toggle back mode: {0}");
 
         messages.put("zh", zhMessages);
         messages.put("en", enMessages);
@@ -94,8 +100,10 @@ public class Simpleback extends JavaPlugin implements Listener {
         trackedCommands = getConfig().getStringList("tracked-commands");
         language = getConfig().getString("language", "zh").toLowerCase();
         maxRecords = getConfig().getInt("max-records", 2);
+        toggleBackMode = getConfig().getBoolean("toggle-back-mode", false);
         getLogger().info("language: " + language);
         getLogger().info("trackedCommands: " + trackedCommands);
+        debugMode = getConfig().getBoolean("debug-mode", false);
 
         // 初始化数据文件
         dataFile = new File(getDataFolder(), "locations.yml");
@@ -164,23 +172,27 @@ public class Simpleback extends JavaPlugin implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onCommand(PlayerCommandPreprocessEvent event) {
-        String[] parts = event.getMessage().toLowerCase().split(" ");
-        if (parts.length == 0) return;
+        String command = event.getMessage().substring(1).toLowerCase(); // 去掉"/"并转小写
+        boolean isTracked = trackedCommands.stream()
+                .anyMatch(cmd -> command.startsWith(cmd.toLowerCase()));
 
-        String baseCommand = parts[0];
-        if (trackedCommands.contains(baseCommand)) {
+        if (isTracked) {
             Player player = event.getPlayer();
             Location loc = player.getLocation();
 
+            if (debugMode) {
+                getLogger().info(getMessage("logger.debug.command_tracked", player.getName(), event.getMessage()));
+            }
+
             Deque<Location> queue = lastLocations.computeIfAbsent(player.getUniqueId(), k -> new ArrayDeque<>());
             queue.offerFirst(loc);
-            // 保持队列不超过最大记录数
             while (queue.size() > maxRecords) {
                 queue.pollLast();
             }
         }
     }
 
+    // 修改后的onCommand方法部分
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (!(sender instanceof Player)) {
@@ -199,17 +211,43 @@ public class Simpleback extends JavaPlugin implements Listener {
             player.sendMessage(getMessage("command.no_location"));
             return true;
         }
-        Location loc = queue.pollFirst(); // 取出并移除最新位置
-        player.teleportAsync(loc).thenAccept(success -> {
+
+        Location currentLoc = player.getLocation();
+        Location targetLoc = queue.peekFirst(); // 查看但不移除最新位置
+
+        if (toggleBackMode && targetLoc != null && currentLoc.distanceSquared(targetLoc) < 4) {
+            // 如果启用了来回模式且玩家已经在目标位置附近，则取下一个位置
+            queue.pollFirst(); // 移除当前位置
+            targetLoc = queue.peekFirst(); // 查看下一个位置
+            if (targetLoc == null) {
+                player.sendMessage(getMessage("command.no_location"));
+                return true;
+            }
+        }
+
+        final Location finalTargetLoc = queue.pollFirst(); // 声明为final变量
+        if (toggleBackMode) {
+            // 如果启用了来回模式，将当前位置添加到队列末尾
+            queue.offerLast(currentLoc);
+            // 保持队列不超过最大记录数
+            while (queue.size() > maxRecords) {
+                queue.pollLast();
+            }
+        }
+
+        player.teleportAsync(finalTargetLoc).thenAccept(success -> {
             if (success) {
                 player.sendMessage(getMessage("command.teleport_success"));
-                getLogger().info(getMessage("logger.location_teleported", player.getName(), formatLocation(loc)));
+                getLogger().info(getMessage("logger.location_teleported",
+                        player.getName(),
+                        formatLocation(finalTargetLoc))); // 使用final变量
             } else {
                 player.sendMessage(getMessage("command.teleport_fail"));
             }
         });
         return true;
     }
+
 
     @Override
     public void onDisable() {

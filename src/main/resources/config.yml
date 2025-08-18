@@ -1,15 +1,23 @@
 # zh/en
-language: en
+language: zh
 
 # 最大记录数量
 # Maximum number of records
 max-records: 1
 
+# 设置为true开启调试模式，控制台会输出监听到的命令
+# Set to true to enable debugging mode, the console will output the commands it listens to
+debug-mode: false
+
+# 是否启用来回back模式，启用后玩家可以在两个位置之间来回传送
+#Is the back and forth mode enabled? Once enabled, players can teleport back and forth between two positions
+toggle-back-mode: true
+
 # 需要监听的传送类命令
 # Transmission commands that need to be monitored.
 tracked-commands:
-  - /tp
-  # 注意游戏内也要使用‘/cmi:home’ 而不是‘/home’。如果需要/home，需要再tracked-commands直接添加‘/cmi’，因为你输入‘/home’但服务端收到的是‘/cmi home’
-  # In the game, ensure to use /cmi:home rather than /home. If /home is required, you must add /cmi directly in the tracked-commands settings. This is due to the fact that when you type /home, the server interprets it as /cmi home.
-  - /cmi:home
-  - /cmi:warp
+  - "cmi home"
+  - "cmi warp"
+  - "res tp" # 匹配/res tp开头的所有命令 / Match all commands starting with /res tp
+  - "teleport"
+  - "tp"
