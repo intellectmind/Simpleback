@@ -29,11 +29,19 @@ language: en
 # Maximum number of records
 max-records: 1
 
+# Set to true to enable debugging mode, the console will output the commands it listens to
+debug-mode: false
+
+#Is the back and forth mode enabled? Once enabled, players can teleport back and forth between two positions
+toggle-back-mode: true
+
 # Transmission commands that need to be monitored.
 tracked-commands:
-  - /tp
-  - /cmi:home # In the game, ensure to use /cmi:home rather than /home. If /home is required, you must add /cmi directly in the tracked-commands settings. This is due to the fact that when you type /home, the server interprets it as /cmi home.
-  - /cmi:warp
+  - "cmi home"
+  - "cmi warp"
+  - "res tp" # Match all commands starting with /res tp
+  - "teleport"
+  - "tp"
 ```
 
 ----------------------------------------------------------------------------------------------------------
