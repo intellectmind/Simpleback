@@ -27,12 +27,13 @@
 language: en
 
 # Maximum number of records
-max-records: 1
+max-records: 2
 
 # Set to true to enable debugging mode, the console will output the commands it listens to
 debug-mode: false
 
-#Is the back and forth mode enabled? Once enabled, players can teleport back and forth between two positions
+# Is the back and forth mode enabled? Once enabled, players can teleport back and forth between two positions
+# Enabling requires setting `max-records` to 2
 toggle-back-mode: true
 
 # Transmission commands that need to be monitored.
