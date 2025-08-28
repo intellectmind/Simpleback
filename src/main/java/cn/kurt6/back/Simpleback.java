@@ -8,6 +8,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Simpleback extends JavaPlugin implements Listener {
 
+    private static final Logger log = LoggerFactory.getLogger(Simpleback.class);
     private final Map<UUID, Deque<Location>> lastLocations = new ConcurrentHashMap<>();
     private int maxRecords;
     private List<String> trackedCommands = new ArrayList<>();
@@ -212,43 +215,44 @@ public class Simpleback extends JavaPlugin implements Listener {
         }
 
         Location currentLoc = player.getLocation();
-        Location targetLoc = queue.peekFirst(); // 查看但不移除最新位置
+        Location targetLoc;
 
-        if (toggleBackMode && targetLoc != null) {
-            // 移除距离检查，直接切换位置
-            queue.pollFirst(); // 移除当前位置
-            targetLoc = queue.peekFirst(); // 查看下一个位置
+        if (toggleBackMode) {
+            // 来回模式：取出最新的位置，并将当前位置添加到队列
+            targetLoc = queue.pollFirst();
             if (targetLoc == null) {
                 player.sendMessage(getMessage("command.no_location"));
                 return true;
             }
+
+            // 将当前位置添加到队列末尾
+            queue.offerLast(currentLoc);
+            while (queue.size() > maxRecords) {
+                queue.pollFirst(); // 移除最旧的位置
+            }
+        } else {
+            // 普通模式：直接取出最新的位置
+            targetLoc = queue.pollFirst();
         }
 
-        final Location finalTargetLoc = queue.pollFirst();
-        if (finalTargetLoc.getWorld() == null || Bukkit.getWorld(finalTargetLoc.getWorld().getName()) == null) {
+        // 检查目标位置是否有效
+        if (targetLoc.getWorld() == null || Bukkit.getWorld(targetLoc.getWorld().getName()) == null) {
             player.sendMessage(getMessage("command.teleport_fail", "目标世界未加载或不存在"));
             return true;
         }
 
-        if (toggleBackMode) {
-            // 如果启用了来回模式，将当前位置添加到队列末尾
-            queue.offerLast(currentLoc);
-            while (queue.size() > maxRecords) {
-                queue.pollLast();
-            }
-        }
-
         // 安全传送
-        player.teleportAsync(finalTargetLoc).thenAccept(success -> {
+        player.teleportAsync(targetLoc).thenAccept(success -> {
             if (success) {
                 player.sendMessage(getMessage("command.teleport_success"));
                 getLogger().info(getMessage("logger.location_teleported",
                         player.getName(),
-                        formatLocation(finalTargetLoc)));
+                        formatLocation(targetLoc)));
             } else {
                 player.sendMessage(getMessage("command.teleport_fail"));
             }
         });
+
         return true;
     }
 
