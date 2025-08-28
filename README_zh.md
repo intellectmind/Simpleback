@@ -27,12 +27,12 @@
 language: zh
 
 # 最大记录数量
-max-records: 2
+max-records: 1
 
 # 设置为true开启调试模式，控制台会输出监听到的命令
 debug-mode: false
 
-# 是否启用来回back模式，启用后玩家可以在两个位置之间来回传送（启用需设置最大记录数量为2）
+# 是否启用来回back模式，启用后玩家可以在两个位置之间来回传送
 toggle-back-mode: true
 
 # 需要监听的传送类命令
